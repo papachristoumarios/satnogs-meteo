@@ -24,11 +24,22 @@
 
   <body ng-app="meteoApp" ng-controller="meteoCtrl">
 
-  <canvas id="line" class="chart chart-line" chart-data="data"
-  chart-labels="labels" chart-legend="true" chart-series="series"
-  chart-click="onClick" >
+  <canvas id="tempChart" class="chart chart-line" chart-data="tempdata"
+  chart-labels="templabels" chart-legend="true" chart-series="tempseries"
+  chart-click="printlog(tempdata)" >
 </canvas> 
       
+      
+<canvas id="humidChart" class="chart chart-line" chart-data="humiddata"
+  chart-labels="humidlabels" chart-legend="true" chart-series="humidseries"
+  chart-click="printlog(humiddata)" >
+</canvas>
+      
+      
+    <canvas id="presChart" class="chart chart-line" chart-data="presdata"
+  chart-labels="preslabels" chart-legend="true" chart-series="presseries"
+  chart-click="printlog(presdata)" >
+</canvas>
       
   </body>
 
