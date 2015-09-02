@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>SatNOGs Meteo</title>
+    <script src="bower_components/angularjs/angular.min.js"></script>
+    <script src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="bower_components/jquery/dist/jquery.min.js"></script>
+    
+<script src="bower_components/chartjs/Chart.min.js"></script>
+
+  <script src="bower_components/angular-chart.js/dist/angular-chart.js"></script>
+    
+      
+      <script src="app.js"></script>
+  
+    
+        <link rel="stylesheet" href="bower_components/angular-chart.js/dist/angular-chart.css">
+    
+    
+    
+    </head>
+
+
+  <body ng-app="meteoApp" ng-controller="meteoCtrl">
+
+  <canvas id="line" class="chart chart-line" chart-data="data"
+  chart-labels="labels" chart-legend="true" chart-series="series"
+  chart-click="onClick" >
+</canvas> 
+      
+      
+  </body>
+
+   
+
+
+</html>
