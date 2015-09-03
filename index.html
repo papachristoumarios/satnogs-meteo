@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 
-<html>
+<html  ng-app="meteoApp">
   <head>
     <title>SatNOGs Meteo</title>
+    
+    <script src="bower_components/commonjs/common.js"></script>
     <script src="bower_components/angularjs/angular.min.js"></script>
-    <script src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
     <script src="bower_components/jquery/dist/jquery.min.js"></script>
     
 <script src="bower_components/chartjs/Chart.min.js"></script>
@@ -22,8 +23,18 @@
     </head>
 
 
-  <body ng-app="meteoApp" ng-controller="meteoCtrl">
+  <body ng-controller="meteoCtrl">
 
+      
+      <div>
+      
+      {{ currenttmp }}
+      {{ currenthum }}
+      
+      
+      </div>
+      
+      
   <canvas id="tempChart" class="chart chart-line" chart-data="tempdata"
   chart-labels="templabels" chart-legend="true" chart-series="tempseries"
   chart-click="printlog(tempdata)" >

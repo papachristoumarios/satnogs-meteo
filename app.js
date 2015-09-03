@@ -1,6 +1,6 @@
 var meteoApp = angular.module('meteoApp', ['chart.js','serialport']);
 
-
+var splib = require('serialport');
 
 
 
@@ -10,19 +10,10 @@ Date.prototype.timeNow = function () {
 
 meteoApp.controller("meteoCtrl", function($scope) {
 
-    $scope.SerialPort = require('serialport').SerialPort;
-    $scope.serialPort = new $scope.SerialPort('/dev/ttyACM0', {
-        baudrate: 115200,
-        parser: $scope.SerialPort.parsers.readline('\n')
-    });
-    
-    
-    $scope.serialPort.on('data', function(data) {
-        $scope.append_datum(data);       
-    });
-    
     $scope.currentdate = new Date();
-    
+    $scope.currenttmp = 0;
+    $scope.currenthum = 0;
+    $scope.currentpres = 0;
     //temperatureChart
     
     $scope.tempseries = ['Temperature (C)'];
@@ -31,7 +22,7 @@ meteoApp.controller("meteoCtrl", function($scope) {
     
     //humidityChart
     
-    $scope.humidseries = ['Humidity (RH)'];    
+    $scope.humidseries = ['Humidity (%)'];    
     $scope.humiddata = [[]];
     $scope.humidlabels = [];
     
@@ -41,33 +32,42 @@ meteoApp.controller("meteoCtrl", function($scope) {
     $scope.presdata = [[]];
     $scope.preslabels = [];
     
+    
+    $scope.serialport = new splib.SerialPort('/dev/ttyACM0', {
+        baudrate: 9600,
+        parser: splib.parsers.readline('\n')
+    });
+    
+    
+    $scope.serialport.on('data', function(data) {
+        var json = JSON.parse(data); 
+        $scope.currenttmp = parseFloat(json.tmp);
+        $scope.currenthum = parseFloat(json.hum);
+        $scope.currentpres = parseFloat(json.pres);
+        var timenow = $scope.currentdate.timeNow();
+            $scope.tempdata[0].push($scope.currenttmp);
+            $scope.tempdata[0].splice(0,1);
+            $scope.templabels.push(timenow);
+            $scope.templabels.splice(0,1);    
+            $scope.presdata[0].push($scope.currentpres);
+            $scope.presdata[0].splice(0,1);      
+            $scope.templabels.push(timenow);
+            $scope.templabels.splice(0,1);
+            $scope.humiddata[0].push($scope.currenthum);
+            $scope.humiddata[0].splice(0,1);
+            $scope.templabels.push(timenow);
+            $scope.templabels.splice(0,1);
+            console.log(data);
+    });
+    
+ 
+  
+    /*
     $scope.append_datum = function (datum) {
         
-        if (datum.substr(-2) === ' C') {
-            datum = parseFloat(datum.substr(datum.length - 3));
-            $scope.tempdata[0].push(datum);
-            $scope.tempdata[0].splice(0,1);
+       
             
-            $scope.templabels.push($scope.currentdate.timeNow());
-            $scope.templabels.splice(0,1);
-            
-        } else-if (datum.substr(-3) === ' Pa') {
-            datum = parseFloat(datum.substr(datum.length - 4));
-            $scope.presdata[0].push(datum);
-            $scope.presdata[0].splice(0,1);
-            
-            $scope.templabels.push($scope.currentdate.timeNow());
-            $scope.templabels.splice(0,1);
-        } else-if (datum.substr(-3) === ' RH') {
-            datum = parseFloat(datum.substr(datum.length - 4));
-            $scope.humiddata[0].push(datum);
-            $scope.humiddata[0].splice(0,1);
-    
-            $scope.templabels.push($scope.currentdate.timeNow());
-            $scope.templabels.splice(0,1);
-        }
-            
-    };
+    }; */
     
     
     $scope.printlog = function(args) {
