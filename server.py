@@ -1,20 +1,16 @@
 #!/usr/bin/env python2.7
 from bokeh.plotting import figure, output_server, cursession, show
-import serial
-import json
-import time
-import os
-cmd = os.system
-
-global SERIAL_PORT_DEV; global BAUDRATE; global DELAY_INTERVAL
-SERIAL_PORT_DEV, BAUDRATE, DELAY_INTERVAL = '/dev/ttyACM', 9600, 2
+from __init__ import *
+import serial, json, time, pymongo, daemon, sys
+global client
+client = pymongo.MongoClient()
 
 #return time as HH:MM:SS
 def get_time(gmt=3):
 	T = time.gmtime()
 	h,m,s = (T.tm_hour + gmt) % 24, T.tm_min, T.tm_sec
 	return "{0}:{1}:{2}".format(h,m,s)
-	
+
 class MeteoStation:
 	
 	def __init__(self, serialObject=None): #nof indicates number of json fields
@@ -41,6 +37,14 @@ class MeteoStation:
 		self.tempchart, self.preschart, self.humchart = MeteoStation.MeteoChart('temp'), MeteoStation.MeteoChart('pres'), MeteoStation.MeteoChart('hum')
 		self.charts = [self.tempchart, self.preschart, self.humchart]
 		
+		#pymongo integration
+		try:
+			self.db = client['meteo_db']
+			self.collection = self.db.colletion['meteo_data_collection']
+		except: #retry with object-style formalism
+			self.db = client.meteo_db
+			self.collection = self.db.collection.meteo_data_collection
+			
 	def update_charts(self):
 		for chart in self.charts:
 			chart.update()			
@@ -49,24 +53,39 @@ class MeteoStation:
 		self.lastdata = self.ser.readline()
 		return self.lastdata
 		
-	def parse_data(self):
+	def parse_data(self, store_to_db=True):
 		self.read_data() #read data from serial object
 		self.lastjson = json.loads(self.lastdata)
 		if not(len(self.lastjson) is 3):
 			raise MeteoStation.ParseDataError()
-		
+		if store_to_db: # store meteo data to meteo_db.meteo_data_collection
+			self.collection.insert_one(post)
 		for key in self.data.keys():
 			self.data[key].append(float(self.lastjson[key]))
 		self.data["timenow"].append(get_time())
+		self.plot_all()
 		
 	def plot_all(self, mode="v"):
 		if not(mode is 'v' or mode is 'h'):
 			raise MeteoStation.InvalidPlotArgument()
-			
 		if mode is 'v':
 			vplot(*self.charts.fig)
 		else:
 			hplot(*self.charts.fig)
+			
+	def maintain(self):
+		if len(self.data[self.data.keys()[0]]) > MAX_STORAGE:
+			for key in self.data.keys():
+				self.data[key] = []
+				
+	def start(self):
+		while True:
+			self.parse_data()
+			self.update_charts()
+			time.sleep(DELAY_INTERVAL)
+	
+	def generate_output(self):
+		with 
 		
 				
 	class MeteoChart:
@@ -103,3 +122,26 @@ class MeteoStation:
 	class InvalidPlotArgument(Exception):
 		def __init__(self):
 			super(InvalidPlotArgument, self).__init__()
+
+class MeteoStationDaemonizer(daemon.Daemon): #daemon wrapper for MeteoStation class
+	
+	def __init__(self):
+		super(MeteoStationDaemonizer, self).__init__('/var/run/meteo_station.pid')
+		self.meteo_station = MeteoStation()
+		
+	def run(self):
+		self.meteo_station.start()
+		
+if __name__ == '__main__':
+	
+	assert(len(sys.argv <= 1))
+	if sys.argv[0] is '--daemonized':
+		meteo_station_daemon = MeteoStationDaemonizer()
+		meteo_station_daemon.start()
+	elif sys.argv[0] is '':
+		meteo_station = MeteoStation()
+		meteo_station.start()
+	else:
+		raise Exception('Not a valid parameter')
+		sys.exit()		
+	

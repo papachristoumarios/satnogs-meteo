@@ -44,13 +44,14 @@ void loop() {
   }
 
   //as JSON
+  //TODO Send as one string via println
   Serial.print(" { \"temp\": \"");
   Serial.print(t);
   Serial.print("\", \"hum\": \"");
   Serial.print(h);
   Serial.print("\", \"pres\" \"");
   Serial.print(p);
-  Serial.println("' }");
+  Serial.println("\" }");
   delay(2000);
   
 }
