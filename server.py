@@ -85,7 +85,7 @@ class MeteoStation:
 			time.sleep(DELAY_INTERVAL)
 	
 	def export_data_to_file(self, outputfilename):
-		if not(outputfilename.endswith('.json'):
+		if not(outputfilename.endswith('.json')):
 			outputfilename += '.json'
 		try:	
 			os.system('mongoexport --db meteo_db --collection meteo_data_collection -o {0}'.format(outputfilename))
