@@ -36,7 +36,8 @@ class MeteoStation:
 		#charts
 		self.tempchart, self.preschart, self.humchart = MeteoStation.MeteoChart('temp'), MeteoStation.MeteoChart('pres'), MeteoStation.MeteoChart('hum')
 		self.charts = [self.tempchart, self.preschart, self.humchart]
-		
+		self.plot_all()
+
 		#pymongo integration
 		try:
 			self.db = client['meteo_db']
@@ -63,7 +64,8 @@ class MeteoStation:
 		for key in self.data.keys():
 			self.data[key].append(float(self.lastjson[key]))
 		self.data["timenow"].append(get_time())
-		self.plot_all()
+		for chart is self.charts: #append to charts datasource
+			chart.append_meteo_data(self.data)
 		
 	def plot_all(self, mode="v"):
 		if not(mode is 'v' or mode is 'h'):
