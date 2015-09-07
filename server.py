@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
 from bokeh.plotting import figure, output_server, cursession, show
 from __init__ import *
-import serial, json, time, pymongo, daemon, sys
+import serial, json, time, pymongo, daemon, sys, os
 global client
 client = pymongo.MongoClient()
 
@@ -22,7 +22,7 @@ class MeteoStation:
 					ser = serial.Serial(SERIAL_PORT_DEV + str(n), BAUDRATE)
 					break
 				except serial.serialutil.SerialException:
-					print 'could not find serial port'
+					print 'Could not open any serial port on {0}{1}. Trying with {0}{2}'.format(SERIAL_PORT_DEV,n,n+1)
 					n += 1
 				return ser
 			self.ser = _generate_serial_object()
@@ -84,9 +84,13 @@ class MeteoStation:
 			self.update_charts()
 			time.sleep(DELAY_INTERVAL)
 	
-	def generate_output(self):
-		with 
-		
+	def export_data_to_file(self, outputfilename):
+		if not(outputfilename.endswith('.json'):
+			outputfilename += '.json'
+		try:	
+			os.system('mongoexport --db meteo_db --collection meteo_data_collection -o {0}'.format(outputfilename))
+		except:
+			raise MeteoStation.ExportError()
 				
 	class MeteoChart:
 		
@@ -122,6 +126,10 @@ class MeteoStation:
 	class InvalidPlotArgument(Exception):
 		def __init__(self):
 			super(InvalidPlotArgument, self).__init__()
+			
+	class ExportError(Exception):
+		def __init__(self):
+			super(ExportError, self).__init__()
 
 class MeteoStationDaemonizer(daemon.Daemon): #daemon wrapper for MeteoStation class
 	
