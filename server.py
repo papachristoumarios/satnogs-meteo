@@ -60,7 +60,7 @@ class MeteoStation:
 		if not(len(self.lastjson) is 3):
 			raise MeteoStation.ParseDataError()
 		if store_to_db: # store meteo data to meteo_db.meteo_data_collection
-			self.collection.insert_one(post)
+			self.collection.insert_one(self.lastjson)
 		for key in self.data.keys():
 			self.data[key].append(float(self.lastjson[key]))
 		self.data["timenow"].append(get_time())
