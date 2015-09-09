@@ -2,10 +2,10 @@
 from bokeh.plotting import figure, output_server, cursession, show, vplot, hplot
 from __init__ import *
 import serial, json, time, pymongo, daemon, sys, os
-global client, output_server
+global client, output_server, uptime_start
 client = pymongo.MongoClient()
 output_server = output_server('arduino_data')
-
+uptime_start = time.time()
 
 #return time as HH:MM:SS
 def get_time(gmt=3):
@@ -32,7 +32,7 @@ class MeteoStation:
 		self.lastdata = ''; self.lastjson = None
 		
 		#charts
-		self.tempchart, self.preschart, self.humchart = MeteoStation.MeteoChart('temp'), MeteoStation.MeteoChart('pres'), MeteoStation.MeteoChart('hum')
+		self.tempchart, self.preschart, self.humchart = MeteoStation.MeteoChart('temp', 'Temperature', 'Temperature in *C'), MeteoStation.MeteoChart('pres','Pressure', 'Pressure in Pa'), MeteoStation.MeteoChart('hum','Humidity', 'Humidity in %RH')
 		self.charts = [self.tempchart, self.preschart, self.humchart]
 		self.figs = [chart.fig for chart in self.charts]
 		self.show_all()
@@ -73,8 +73,9 @@ class MeteoStation:
 		self.data["timenow"].append(get_time())		
 		for chart in self.charts: #append to charts datasource
 			chart.append_meteo_data(self.data)
+		#print 'Appended meteo data successfuly to charts'
 		
-	def plot_all(self, mode="v"):
+	def get_plot(self, mode="v"):
 		if not(mode is 'v' or mode is 'h'):
 			raise MeteoStation.InvalidPlotArgument()
 		if mode is 'v':
@@ -83,7 +84,7 @@ class MeteoStation:
 			return hplot(*self.figs)
 			
 	def show_all(self):
-		show(self.plot_all()); 
+		show(self.get_plot()); 
 			
 	def maintain(self):
 		if len(self.data[self.data.keys()[0]]) > MAX_STORAGE:
@@ -106,12 +107,13 @@ class MeteoStation:
 				
 	class MeteoChart:
 		
-		def __init__(self, name, plot_width=400, plot_height=400):
+		def __init__(self, name, title='', y_label='', plot_width=400, plot_height=400):
 			#self.fig = figure(plot_width, plot_height, name)
 			self.name = name
-			self.fig = figure()
+			if title is '':
+				title = name
+			self.fig = figure(title=title, x_axis_label='Uptime in sec', y_axis_label = y_label)
 			self.fig.line([],[], name=self.name)
-	
 			self.renderer = self.fig.select(dict(name=self.name))
 			self.data_source = self.renderer[0].data_source
 			
@@ -120,11 +122,13 @@ class MeteoStation:
 			self.data_source.data['y'].append(y)
 		
 		def append_meteo_data(self, d):
-			self.data_source.data['x'].append(d['timenow'][-1])
+			self.data_source.data['x'].append(time.time()-uptime_start)
 			self.data_source.data['y'].append(d[self.name][-1])
+			#self.update()
 									
 		def update(self):
 			cursession().store_objects(self.data_source)
+			#print 'Stored data to current session'
 				
 		def show(self):
 			show(self.fig)
