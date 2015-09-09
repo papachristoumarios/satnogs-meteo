@@ -1,9 +1,11 @@
 #!/usr/bin/env python2.7
-from bokeh.plotting import figure, output_server, cursession, show
+from bokeh.plotting import figure, output_server, cursession, show, vplot, hplot
 from __init__ import *
 import serial, json, time, pymongo, daemon, sys, os
-global client
+global client, output_server
 client = pymongo.MongoClient()
+output_server = output_server('arduino_data')
+
 
 #return time as HH:MM:SS
 def get_time(gmt=3):
@@ -15,28 +17,25 @@ class MeteoStation:
 	
 	def __init__(self, serialObject=None): #nof indicates number of json fields
 		if serialObject is None:
-			def _generate_serial_object():
-				n=0
-				while True:
+			n=0
+			while True:
 				try:
-					ser = serial.Serial(SERIAL_PORT_DEV + str(n), BAUDRATE)
+					self.ser = serial.Serial(SERIAL_PORT_DEV + str(n), BAUDRATE)
 					break
 				except serial.serialutil.SerialException:
 					print 'Could not open any serial port on {0}{1}. Trying with {0}{2}'.format(SERIAL_PORT_DEV,n,n+1)
 					n += 1
-				return ser
-			self.ser = _generate_serial_object()
 		else:
 			self.ser = serialObject
 		self.data = {}
 		self.data["temp"], self.data["hum"], self.data["pres"], self.data["timenow"] = [],[],[],[]
 		self.lastdata = ''; self.lastjson = None
-		self.output_server = output_server('arduino_data')
 		
 		#charts
 		self.tempchart, self.preschart, self.humchart = MeteoStation.MeteoChart('temp'), MeteoStation.MeteoChart('pres'), MeteoStation.MeteoChart('hum')
 		self.charts = [self.tempchart, self.preschart, self.humchart]
-		self.plot_all()
+		self.figs = [chart.fig for chart in self.charts]
+		self.show_all()
 
 		#pymongo integration
 		try:
@@ -51,29 +50,40 @@ class MeteoStation:
 			chart.update()			
 		
 	def read_data(self):
-		self.lastdata = self.ser.readline()
-		return self.lastdata
+		try:
+			self.lastdata = self.ser.readline()
+			return self.lastdata
+		except:
+			return
 		
 	def parse_data(self, store_to_db=True):
 		self.read_data() #read data from serial object
-		self.lastjson = json.loads(self.lastdata)
+		try:
+			self.lastjson = json.loads(self.lastdata)
+		except:
+			return
 		if not(len(self.lastjson) is 3):
-			raise MeteoStation.ParseDataError()
+			print 'Data could not be parsed'; return
 		if store_to_db: # store meteo data to meteo_db.meteo_data_collection
-			self.collection.insert_one(post)
+			self.collection.insert_one(self.lastjson)
 		for key in self.data.keys():
-			self.data[key].append(float(self.lastjson[key]))
-		self.data["timenow"].append(get_time())
-		for chart is self.charts: #append to charts datasource
+			if key is not 'timenow':
+				self.data[key].append(float(self.lastjson[key]))
+			print '{0}:{1}'.format(key, self.data[key][-1:])
+		self.data["timenow"].append(get_time())		
+		for chart in self.charts: #append to charts datasource
 			chart.append_meteo_data(self.data)
 		
 	def plot_all(self, mode="v"):
 		if not(mode is 'v' or mode is 'h'):
 			raise MeteoStation.InvalidPlotArgument()
 		if mode is 'v':
-			vplot(*self.charts.fig)
+			return vplot(*self.figs)
 		else:
-			hplot(*self.charts.fig)
+			return hplot(*self.figs)
+			
+	def show_all(self):
+		show(self.plot_all()); 
 			
 	def maintain(self):
 		if len(self.data[self.data.keys()[0]]) > MAX_STORAGE:
@@ -97,20 +107,22 @@ class MeteoStation:
 	class MeteoChart:
 		
 		def __init__(self, name, plot_width=400, plot_height=400):
-			self.fig = figure(plot_width, plot_height, name)
-			self.fig.line([],[], dict(name))
+			#self.fig = figure(plot_width, plot_height, name)
 			self.name = name
-			self.renderer = self.fig.select(dict(name))
+			self.fig = figure()
+			self.fig.line([],[], name=self.name)
+	
+			self.renderer = self.fig.select(dict(name=self.name))
 			self.data_source = self.renderer[0].data_source
 			
 		def append_datum(self,x,y):
-			self.data_source['x'].append(x)
-			self.data_source['y'].append(y)
+			self.data_source.data['x'].append(x)
+			self.data_source.data['y'].append(y)
 		
 		def append_meteo_data(self, d):
-			self.data_source['x'].append(d['timenow'][len(d['timenow'])
-			self.data_source['y'].append(d[self.name][len(d[self.name])
-						
+			self.data_source.data['x'].append(d['timenow'][-1])
+			self.data_source.data['y'].append(d[self.name][-1])
+									
 		def update(self):
 			cursession().store_objects(self.data_source)
 				
@@ -121,9 +133,9 @@ class MeteoStation:
 			def __init__(self):
 				super(InvalidChartData, self).__init__()
 
-	class ParseDataError(ParseError):
+	class ParseDataError(Exception):
 		def __init__(self):
-			super(MeteoStationException, self).__init__()
+			super(ParseDataError, self).__init__()
 	
 	class InvalidPlotArgument(Exception):
 		def __init__(self):
@@ -144,14 +156,14 @@ class MeteoStationDaemonizer(daemon.Daemon): #daemon wrapper for MeteoStation cl
 		
 if __name__ == '__main__':
 	
-	assert(len(sys.argv <= 1))
+	assert(len(sys.argv) <= 1)
 	if sys.argv[0] is '--daemonized':
 		meteo_station_daemon = MeteoStationDaemonizer()
 		meteo_station_daemon.start()
-	elif sys.argv[0] is '':
+	else:
 		meteo_station = MeteoStation()
 		meteo_station.start()
-	else:
-		raise Exception('Not a valid parameter')
-		sys.exit()		
+	#else:
+	#	raise Exception('Not a valid parameter')
+	#	sys.exit()		
 	
