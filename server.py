@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
 from bokeh.plotting import figure, output_server, cursession, show, vplot, hplot
 from __init__ import *
-import serial, json, time, pymongo, daemon, sys, os
+import json, time, pymongo, daemon, sys, os
 global client, output_server, uptime_start
 client = pymongo.MongoClient()
 output_server = output_server('arduino_data')
@@ -13,26 +13,51 @@ def get_time(gmt=3):
 	h,m,s = (T.tm_hour + gmt) % 24, T.tm_min, T.tm_sec
 	return "{0}:{1}:{2}".format(h,m,s)
 
+class DHT22Wrapper:
+	
+	def __init__(self, pin = 23):
+		import Adafruit_DHT
+		self.sensor = Adafruit_DHT.DHT22
+		self.pin = pin
+		
+	def read_data(self):
+		return Adafruit_DHT.read_retry(self.sensor, self.pin)
+		
+	def read_hum(self):
+		return self.read_data()[1]
+		
+	def read_temp(self):
+		return self.read_data()[2]
+
+
 class MeteoStation:
 	
-	def __init__(self, serialObject=None): #nof indicates number of json fields
-		if serialObject is None:
-			n=0
-			while True:
-				try:
-					self.ser = serial.Serial(SERIAL_PORT_DEV + str(n), BAUDRATE)
-					break
-				except serial.serialutil.SerialException:
-					print 'Could not open any serial port on {0}{1}. Trying with {0}{2}'.format(SERIAL_PORT_DEV,n,n+1)
-					n += 1
-		else:
-			self.ser = serialObject
+	def __init__(self, mode = 'arduino',serialObject=None): #nof indicates number of json fields
+		self.mode = mode
+		if mode is 'arduino':
+			import serial
+			if serialObject is None:
+				n=0
+				while True:
+					try:
+						self.ser = serial.Serial(SERIAL_PORT_DEV + str(n), BAUDRATE)
+						break
+					except serial.serialutil.SerialException:
+						print 'Could not open any serial port on {0}{1}. Trying with {0}{2}'.format(SERIAL_PORT_DEV,n,n+1)
+						n += 1
+			else:
+				self.ser = serialObject
+				self.ser.open()
+		elif mode is 'rpi':
+			import Adafruit_BMP.BMP085 as BMP
+			self.bmp, self.dht = BMP.BMP085(), DHT22Wrapper() 
+			
 		self.data = {}
 		self.data["temp"], self.data["hum"], self.data["pres"], self.data["timenow"] = [],[],[],[]
 		self.lastdata = ''; self.lastjson = None
 		
 		#charts
-		self.tempchart, self.preschart, self.humchart = MeteoStation.MeteoChart('temp', 'Temperature', 'Temperature in *C'), MeteoStation.MeteoChart('pres','Pressure', 'Pressure in Pa'), MeteoStation.MeteoChart('hum','Humidity', 'Humidity in %RH')
+		self.tempchart, self.preschart, self.humchart = MeteoStation.MeteoChart('temp', 'Temperature', 'Temperature in *C'), MeteoStation.MeteoChart('pres','Pressure', 'Pressure in hPa'), MeteoStation.MeteoChart('hum','Humidity', 'Humidity in %RH')
 		self.charts = [self.tempchart, self.preschart, self.humchart]
 		self.figs = [chart.fig for chart in self.charts]
 		self.show_all()
@@ -50,12 +75,19 @@ class MeteoStation:
 			chart.update()			
 		
 	def read_data(self):
-		try:
-			self.lastdata = self.ser.readline()
-			return self.lastdata
-		except:
-			return
-		
+		if self.mode is 'arduino':
+			try:
+				self.lastdata = self.ser.readline()
+				return self.lastdata
+			except:
+				return
+		elif self.mode is 'rpi':
+			try:
+				self.lastdata = json.dumps({'temp': str(self.dht.read_temp()), 'hum': str(self.dht.read_hum()), 'pres': str(self.bmp.read_pressure())})
+				return self.lastdata
+			except:
+				return
+			
 	def parse_data(self, store_to_db=True):
 		self.read_data() #read data from serial object
 		try:
@@ -132,6 +164,10 @@ class MeteoStation:
 				
 		def show(self):
 			show(self.fig)
+			
+		def change_mode(self):
+			if self.mode is 'rpi': self.mode = 'arduino'
+			if self.mode is 'arduino': self.mode = 'rpi'
 			
 		class InvalidChartData(Exception):
 			def __init__(self):
