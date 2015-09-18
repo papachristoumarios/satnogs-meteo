@@ -24,10 +24,10 @@ class DHT22Wrapper:
 		return Adafruit_DHT.read_retry(self.sensor, self.pin)
 		
 	def read_hum(self):
-		return self.read_data()[1]
+		return self.read_data()[0]
 		
 	def read_temp(self):
-		return self.read_data()[2]
+		return self.read_data()[1]
 
 
 class MeteoStation:
