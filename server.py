@@ -14,8 +14,9 @@ def get_time(gmt=3):
 	return "{0}:{1}:{2}".format(h,m,s)
 
 class DHT22Wrapper:
+	"""Wrapper for DHT22 Sensor"""
 	
-	def __init__(self, pin = 23):
+	def __init__(self, pin = 4):
 		import Adafruit_DHT
 		self.sensor = Adafruit_DHT.DHT22
 		self.pin = pin
@@ -24,16 +25,45 @@ class DHT22Wrapper:
 		return Adafruit_DHT.read_retry(self.sensor, self.pin)
 		
 	def read_hum(self):
-		return self.read_data()[0]
+		return float(self.read_data()[0])
 		
 	def read_temp(self):
-		return self.read_data()[1]
+		return float(self.read_data()[1])
+		
+class BMP180Wrapper:
+	"""Wrapper for BMP180 Sensor"""
+	
+	def __init__(self):
+		import Adafruit_BMP.BMP085 as BMP
+		self.sensor = BMP.BMP085()
+		
+	def read_temp(self):
+		return float(self.sensor.read_temperature())
+		
+	def read_pres(self):
+		return float(self.sensor.read_pressure())	
 
 
 class MeteoStation:
 	
+	@property
+	def mode(self):
+		return self._mode
+		
+	@mode.setter
+	def mode(self,value):
+		if self.modeset:
+			raise Exception('Mode already set to {0}'.format(self._mode))
+		else:
+			self._mode = value
+		
+	@mode.getter
+	def mode(self):
+		return self._mode
+	
 	def __init__(self, mode = 'arduino',serialObject=None): #nof indicates number of json fields
 		self.mode = mode
+		self.modeset = True
 		if mode is 'arduino':
 			import serial
 			if serialObject is None:
@@ -49,8 +79,7 @@ class MeteoStation:
 				self.ser = serialObject
 				self.ser.open()
 		elif mode is 'rpi':
-			import Adafruit_BMP.BMP085 as BMP
-			self.bmp, self.dht = BMP.BMP085(), DHT22Wrapper() 
+			self.bmp, self.dht = BMP180Wrapper(), DHT22Wrapper() 
 			
 		self.data = {}
 		self.data["temp"], self.data["hum"], self.data["pres"], self.data["timenow"] = [],[],[],[]
@@ -83,7 +112,7 @@ class MeteoStation:
 				return
 		elif self.mode is 'rpi':
 			try:
-				self.lastdata = json.dumps({'temp': str(self.dht.read_temp()), 'hum': str(self.dht.read_hum()), 'pres': str(self.bmp.read_pressure())})
+				self.lastdata = json.dumps({'temp': str((self.dht.read_temp()+self.bmp.read_temp())/2), 'hum': str(self.dht.read_hum()), 'pres': str(self.bmp.read_pres())})
 				return self.lastdata
 			except:
 				return
@@ -138,6 +167,7 @@ class MeteoStation:
 			raise MeteoStation.ExportError()
 				
 	class MeteoChart:
+		"""Meteo Chart class"""
 		
 		def __init__(self, name, title='', y_label='', plot_width=400, plot_height=400):
 			#self.fig = figure(plot_width, plot_height, name)
@@ -201,9 +231,8 @@ if __name__ == '__main__':
 		meteo_station_daemon = MeteoStationDaemonizer()
 		meteo_station_daemon.start()
 	else:
-		meteo_station = MeteoStation()
+		meteo_station = MeteoStation(mode='rpi')
 		meteo_station.start()
 	#else:
 	#	raise Exception('Not a valid parameter')
 	#	sys.exit()		
-	
