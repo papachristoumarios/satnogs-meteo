@@ -1,10 +1,36 @@
 #!/usr/bin/env python2.7
 from bokeh.plotting import figure, output_server, cursession, show, vplot, hplot
+from bokeh.session import Session
 from __init__ import *
-import json, time, pymongo, daemon, sys, os
+import json, time, pymongo, daemon, sys, os, socket
 global client, output_server, uptime_start
+if os.name != "nt":
+    import fcntl
+    import struct
+
+    def get_interface_ip(ifname):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s',
+                                ifname[:15]))[20:24])
+def get_lan_ip():
+    ip = socket.gethostbyname(socket.gethostname())
+    if ip.startswith("127.") and os.name != "nt":
+        interfaces = [
+            "eth0",
+            "wlan0",
+            "wlan1"
+            ]
+        for ifname in interfaces:
+            try:
+                ip = get_interface_ip(ifname)
+                break
+            except IOError:
+                pass
+    return ip
+
+
 client = pymongo.MongoClient()
-output_server = output_server('arduino_data')
+output_server = output_server('meteo_data', url='http://{0}:{1}'.format(get_lan_ip(), 5006))
 uptime_start = time.time()
 
 #return time as HH:MM:SS
