@@ -90,7 +90,8 @@ class MeteoStation:
 		self.charts = [self.tempchart, self.preschart, self.humchart]
 		self.figs = [chart.fig for chart in self.charts]
 		self.show_all()
-
+		cursession().publish()
+	
 		#pymongo integration
 		try:
 			self.db = client['meteo_db']
