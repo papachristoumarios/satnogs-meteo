@@ -140,6 +140,7 @@ class MeteoStation:
 		elif self.mode is 'rpi':
 			try:
 				self.lastdata = json.dumps({'temp': str((self.dht.read_temp()+self.bmp.read_temp())/2), 'hum': str(self.dht.read_hum()), 'pres': str(self.bmp.read_pres())})
+				print self.lastdata
 				return self.lastdata
 			except:
 				return
