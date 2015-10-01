@@ -2,8 +2,11 @@
 from bokeh.plotting import figure, output_server, cursession, show, vplot, hplot
 from bokeh.session import Session
 from __init__ import *
+from wrappers import *
 import json, time, pymongo, daemon, sys, os, socket
 global client, output_server, uptime_start
+
+
 if os.name != "nt":
     import fcntl
     import struct
@@ -38,37 +41,6 @@ def get_time(gmt=3):
 	T = time.gmtime()
 	h,m,s = (T.tm_hour + gmt) % 24, T.tm_min, T.tm_sec
 	return "{0}:{1}:{2}".format(h,m,s)
-
-class DHT22Wrapper:
-	"""Wrapper for DHT22 Sensor"""
-	
-	def __init__(self, pin = 4):
-		import Adafruit_DHT
-		self.sensor = Adafruit_DHT.DHT22
-		self.pin = pin
-		
-	def read_data(self):
-		return Adafruit_DHT.read_retry(self.sensor, self.pin)
-		
-	def read_hum(self):
-		return float(self.read_data()[0])
-		
-	def read_temp(self):
-		return float(self.read_data()[1])
-		
-class BMP180Wrapper:
-	"""Wrapper for BMP180 Sensor"""
-	
-	def __init__(self):
-		import Adafruit_BMP.BMP085 as BMP
-		self.sensor = BMP.BMP085()
-		
-	def read_temp(self):
-		return float(self.sensor.read_temperature())
-		
-	def read_pres(self):
-		return float(self.sensor.read_pressure())	
-
 
 class MeteoStation:
 	
