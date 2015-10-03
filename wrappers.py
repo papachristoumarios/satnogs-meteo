@@ -28,3 +28,15 @@ class BMP180Wrapper:
 	def read_pres(self):
 		return float(self.sensor.read_pressure())	
 
+class BokehServerWrapper:
+	
+	def __init__(self, ip, bg=True, multiuser=False):
+		import sh
+		self.cmd = sh.Command('/usr/local/bin/bokeh-server')
+		self.ip = ip
+		self.bg = bg
+		
+	def run(self):
+		self.cmd(ip=self.ip)
+		
+	def __call__(self): self.run()
