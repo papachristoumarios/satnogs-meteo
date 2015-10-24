@@ -217,22 +217,31 @@ class MeteoStation:
 
 class MeteoStationDaemonizer(daemon.Daemon): #daemon wrapper for MeteoStation class
 	
-	def __init__(self):
+	def __init__(self, meteo_station_instance=None):
 		super(MeteoStationDaemonizer, self).__init__('/var/run/meteo_station.pid')
-		self.meteo_station = MeteoStation()
+		if meteo_station_instance is None:
+			self.meteo_station = MeteoStation()
+		else:
+			self.meteo_station = meteo_station_instance
 		
 	def run(self):
 		self.meteo_station.start()
 		
 if __name__ == '__main__':
-	
-	assert(len(sys.argv) <= 1)
-	if sys.argv[0] is '--daemonized':
-		meteo_station_daemon = MeteoStationDaemonizer()
-		meteo_station_daemon.start()
-	else:
-		meteo_station = MeteoStation(mode='rpi')
-		meteo_station.start()
-	#else:
-	#	raise Exception('Not a valid parameter')
-	#	sys.exit()		
+	assert(len(sys.argv) <= 2)
+	try:
+		bokeh_server = BokehServerWrapper(ip=get_lan_ip())
+		bokeh_server()
+		time.sleep(3)
+	except:
+		sys.exit()
+	finally:
+		if sys.argv[1] is '--arduino':
+			meteo_station = MeteoStation(mode='arduino')
+		else:	
+			meteo_station = MeteoStation(mode='rpi')
+		if sys.argv[0] is '--daemonized':
+			meteo_station_daemon = MeteoStationDaemonizer(meteo_station)
+			meteo_station_daemon.start()
+		else:
+			meteo_station.start()
