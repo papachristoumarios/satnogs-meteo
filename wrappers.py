@@ -1,3 +1,5 @@
+import os
+
 class DHT22Wrapper:
 	"""Wrapper for DHT22 Sensor"""
 	
@@ -29,14 +31,19 @@ class BMP180Wrapper:
 		return float(self.sensor.read_pressure())	
 
 class BokehServerWrapper:
+	"""Python wrapper for bokeh-server"""
 	
 	def __init__(self, ip, bg=True, multiuser=False):
-		import sh
-		self.cmd = sh.Command('/usr/local/bin/bokeh-server')
+		#import sh
+		#self.cmd = sh.Command('/usr/local/bin/bokeh-server')
 		self.ip = ip
 		self.bg = bg
+		if self.bg:
+			self.cmd = 'bokeh-server --ip {0} &'.format(self.ip)
+		else:
+			self.cmd = 'bokeh-server --ip {0}'.format(self.ip)
 		
 	def run(self):
-		self.cmd(ip=self.ip)
+		os.system(self.cmd)
 		
 	def __call__(self): self.run()
