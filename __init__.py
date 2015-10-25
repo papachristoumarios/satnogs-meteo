@@ -1,0 +1,7 @@
+#contains configs
+
+global SERIAL_PORT_DEV; global BAUDRATE; global DELAY_INTERVAL; global MAX_STORAGE
+SERIAL_PORT_DEV = '/dev/ttyACM'
+BAUDRATE = 9600 
+DELAY_INTERVAL = 2 
+MAX_STORAGE = 500
