@@ -235,11 +235,11 @@ if __name__ == '__main__':
 	except:
 		sys.exit()
 	finally:
-		if sys.argv[1] is '--arduino':
+		if '--arduino' in sys.argv:
 			meteo_station = MeteoStation(mode='arduino')
 		else:	
 			meteo_station = MeteoStation(mode='rpi')
-		if sys.argv[0] is '--daemonized':
+		if '--daemonized' in sys.argv:
 			meteo_station_daemon = MeteoStationDaemonizer(meteo_station)
 			meteo_station_daemon.start()
 		else:
