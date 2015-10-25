@@ -230,8 +230,7 @@ class MeteoStationDaemonizer(daemon.Daemon): #daemon wrapper for MeteoStation cl
 if __name__ == '__main__':
 	assert(len(sys.argv) <= 2)
 	try:
-		bokeh_server = BokehServerWrapper(ip=get_lan_ip())
-		bokeh_server()
+		bokeh_server(ip=get_lan_ip(), bg=True)
 		time.sleep(3)
 	except:
 		sys.exit()
